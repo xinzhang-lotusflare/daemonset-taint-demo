@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: demo-ds
+  namespace: default
+  labels:
+    app: demo-ds
+  annotations:
+    app: demo-ds
+spec:
+  selector:
+    matchLabels:
+      name: demo-ds
+  template:
+    metadata:
+      labels:
+        name: demo-ds
+    spec:
+      serviceAccountName: demo-ds-sa
+      terminationGracePeriodSeconds: 0
+      tolerations:
+      - key: node-role.kubernetes.io/demo-ds-non-ready
+        operator: Exists
+        effect: NoSchedule
+      nodeSelector:
+        kubernetes.io/hostname: k3d-test-agent-0
+      containers:
+      - name: demo-ds
+        image: registry:5000/demo:1
+        resources:
+          limits:
+            cpu: 50m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 200Mi
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      - name: sidecar
+        # image: bitnami/kubectl:1.25.11-debian-11-r5
+        image: registry:5000/kubectl:1.25.11
+        resources:
+          limits:
+            cpu: 50m
+            memory: 200Mi
+          requests:
+            cpu: 50m
+            memory: 200Mi
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+        command:
+          - "/bin/bash"
+          - "-c"
+          - "sleep infinity"
