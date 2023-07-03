@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: monitor
+  namespace: default
+  labels:
+    app: monitor
+  annotations:
+    app: monitor
+spec:
+  selector:
+    matchLabels:
+      name: monitor
+  template:
+    metadata:
+      labels:
+        name: monitor
+    spec:
+      serviceAccountName: monitor-sa
+      terminationGracePeriodSeconds: 0
+      tolerations:
+      - key: demo-ds-not-ready
+        operator: Exists
+        effect: NoSchedule
+      - key: demo-ds-not-ready
+        operator: Exists
+        effect: NoExecute
+      nodeSelector:
+        kubernetes.io/hostname: k3d-test-agent-0
+      containers:
+      - name: monitor
+        # image: bitnami/kubectl:1.25.11-debian-11-r5
+        image: registry:5000/kubectl:1.25.11
+        resources:
+          limits:
+            cpu: 10m
+            memory: 10Mi
+          requests:
+            cpu: 2m
+            memory: 2Mi
+        env:
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: K8S_NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          - name: MANAGED_TAINT
+            value: demo-ds-not-ready:NoSchedule
+          - name: DAEMONSET_LABELS
+            value: "name=demo-ds,component=test"
+        command:
+          - "/bin/bash"
+          - "-c"
+          - |
+            CUSTOME_OUTPUT=-o=custom-columns=PodStatus:'{status.conditions[?(@.type=="Ready")].status}',NodeIP:'{.status.hostIP}'
+            while true; do
+              POD_ENTRY=$(kubectl get pods -l $DAEMONSET_LABELS $CUSTOME_OUTPUT | grep $K8S_NODE_IP)
+              POD_STATUS=$(echo ${POD_ENTRY} | cut -d' ' -f1)
+              if [[ $POD_STATUS == "True" ]]; then
+                # remove taint
+                kubectl taint nodes ${K8S_NODE_NAME} ${MANAGED_TAINT}-
+                break
+              fi
+              echo "Target Ready: $POD_STATUS"
+              sleep 5s
+            done
+            echo "Exiting ..."
+            sleep 300 && exit 0

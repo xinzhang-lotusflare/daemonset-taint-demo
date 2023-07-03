@@ -18,7 +18,6 @@ spec:
         name: demo-ds
         component: test
     spec:
-      serviceAccountName: demo-ds-sa
       terminationGracePeriodSeconds: 0
       tolerations:
       - key: demo-ds-not-ready
@@ -46,8 +45,8 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
       - name: sidecar
-        # image: bitnami/kubectl:1.25.11-debian-11-r5
-        image: registry:5000/kubectl:1.25.11
+        # use this container to curl python app running in main container
+        image: registry:5000/python:3.11.4
         resources:
           limits:
             cpu: 10m
@@ -55,33 +54,8 @@ spec:
           requests:
             cpu: 10m
             memory: 10Mi
-        env:
-          - name: K8S_NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: K8S_NODE_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.hostIP
-          - name: MANAGED_TAINT
-            value: demo-ds-not-ready:NoSchedule
-          - name: DAEMONSET_LABELS
-            value: "name=demo-ds,component=test"
         command:
           - "/bin/bash"
           - "-c"
           - |
-            CUSTOME_OUTPUT=-o=custom-columns=PodStatus:'{status.conditions[?(@.type=="Ready")].status}',NodeIP:'{.status.hostIP}'
-            while true; do
-              sleep 5s
-              POD_ENTRY=$(kubectl get pods -l $DAEMONSET_LABELS $CUSTOME_OUTPUT | grep $K8S_NODE_IP)
-              POD_STATUS=$(echo ${POD_ENTRY} | cut -d' ' -f1)
-              if [[ $POD_STATUS == "True" ]]; then
-                # remove taint
-                kubectl taint nodes ${K8S_NODE_NAME} ${MANAGED_TAINT}-
-                break
-              fi
-            done
-            # exit after 5 minutes
-            sleep 300 && exit 0
+            sleep infinity
