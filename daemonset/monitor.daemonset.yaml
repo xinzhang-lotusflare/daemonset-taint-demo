@@ -59,12 +59,12 @@ spec:
             while true; do
               POD_ENTRY=$(kubectl get pods -l $DAEMONSET_LABELS $CUSTOME_OUTPUT | grep $K8S_NODE_IP)
               POD_STATUS=$(echo ${POD_ENTRY} | cut -d' ' -f1)
+              echo "Target Ready: $POD_STATUS"
               if [[ $POD_STATUS == "True" ]]; then
                 # remove taint
                 kubectl taint nodes ${K8S_NODE_NAME} ${MANAGED_TAINT}-
                 break
               fi
-              echo "Target Ready: $POD_STATUS"
               sleep 5s
             done
             echo "Exiting ..."
