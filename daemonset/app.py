@@ -10,6 +10,7 @@ non_ready_deadline = datetime.now()
 class HttpHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
+        # curl http://<host>:8000
         if datetime.now() < non_ready_deadline:
             self.send_response(500)
         else:
@@ -24,6 +25,8 @@ class HttpHandler(BaseHTTPRequestHandler):
         )
 
     def do_POST(self):
+        # 1. curl -XPOST http://<host>:8000 -d '{}'
+        # 2. curl -XPOST http://<host>:8000 -d '{"duration":1234}'
         # it update the `non_ready_deadline`, so it will return 500 for GET for some time, default is 30s
         content_length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(content_length))
