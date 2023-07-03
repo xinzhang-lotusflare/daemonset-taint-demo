@@ -5,6 +5,7 @@ metadata:
   namespace: default
   labels:
     app: demo-ds
+    component: test
   annotations:
     app: demo-ds
 spec:
@@ -15,13 +16,17 @@ spec:
     metadata:
       labels:
         name: demo-ds
+        component: test
     spec:
       serviceAccountName: demo-ds-sa
       terminationGracePeriodSeconds: 0
       tolerations:
-      - key: node-role.kubernetes.io/demo-ds-non-ready
+      - key: demo-ds-not-ready
         operator: Exists
         effect: NoSchedule
+      - key: demo-ds-not-ready
+        operator: Exists
+        effect: NoExecute
       nodeSelector:
         kubernetes.io/hostname: k3d-test-agent-0
       containers:
@@ -45,17 +50,38 @@ spec:
         image: registry:5000/kubectl:1.25.11
         resources:
           limits:
-            cpu: 50m
-            memory: 200Mi
+            cpu: 2m
+            memory: 2Mi
           requests:
-            cpu: 50m
-            memory: 200Mi
+            cpu: 2m
+            memory: 2Mi
         env:
-          - name: NODE_NAME
+          - name: K8S_NODE_NAME
             valueFrom:
               fieldRef:
                 fieldPath: spec.nodeName
+          - name: K8S_NODE_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.hostIP
+          - name: MANAGED_TAINT
+            value: demo-ds-not-ready:NoSchedule
+          - name: DAEMONSET_LABELS
+            value: "name=demo-ds,component=test"
         command:
           - "/bin/bash"
           - "-c"
-          - "sleep infinity"
+          - |
+            CUSTOME_OUTPUT=-o=custom-columns=PodStatus:'{status.conditions[?(@.type=="Ready")].status}',NodeIP:'{.status.hostIP}'
+            while true; do
+              sleep 5s
+              POD_ENTRY=$(kubectl get pods -l $DAEMONSET_LABELS $CUSTOME_OUTPUT | grep $K8S_NODE_IP)
+              POD_STATUS=$(echo ${POD_ENTRY} | cut -d' ' -f1)
+              if [[ $POD_STATUS == "True" ]]; then
+                # remove taint
+                kubectl taint nodes ${K8S_NODE_NAME} ${MANAGED_TAINT}-
+                break
+              fi
+            done
+            # exit after 5 minutes
+            sleep 300 && exit 0

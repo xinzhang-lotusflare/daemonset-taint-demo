@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      terminationGracePeriodSeconds: 0
+      nodeSelector:
+        kubernetes.io/hostname: k3d-test-agent-0
+      containers:
+      - name: app
+        image: registry:5000/kubectl:1.25.11
+        resources:
+          limits:
+            cpu: 20m
+            memory: 25Mi
+          requests:
+            cpu: 20m
+            memory: 25Mi
+        command:
+          - "/bin/bash"
+          - "-c"
+          - "sleep infinity"
