@@ -29,6 +29,9 @@ spec:
         kubernetes.io/hostname: k3d-test-agent-0
       containers:
       - name: monitor
+        # It monitors the state of daemonset `demo-ds`, which runs the python script actually.
+        # When the pod status is ready, it will remove specified taint from the same node.
+        #
         # image: bitnami/kubectl:1.25.11-debian-11-r5
         image: registry:5000/kubectl:1.25.11
         resources:

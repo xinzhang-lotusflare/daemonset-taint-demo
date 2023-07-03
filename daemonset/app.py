@@ -6,6 +6,7 @@ import json
 
 non_ready_deadline = datetime.now()
 
+
 class HttpHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -23,6 +24,7 @@ class HttpHandler(BaseHTTPRequestHandler):
         )
 
     def do_POST(self):
+        # it update the `non_ready_deadline`, so it will return 500 for GET for some time, default is 30s
         content_length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(content_length))
         non_ready_duration = body.get('duration', 30)
@@ -32,9 +34,7 @@ class HttpHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(self._get_post_response_body().encode('utf-8'))
 
-        
 
 if __name__ == "__main__":
     server = HTTPServer(('0.0.0.0', 8000), HttpHandler)
     server.serve_forever()
-

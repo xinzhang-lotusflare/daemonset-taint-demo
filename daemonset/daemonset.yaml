@@ -30,6 +30,7 @@ spec:
         kubernetes.io/hostname: k3d-test-agent-0
       containers:
       - name: demo-ds
+        # It runs the app.py script, which implemented a HTTP service listenning 8000 port
         image: registry:5000/demo:1
         resources:
           limits:
