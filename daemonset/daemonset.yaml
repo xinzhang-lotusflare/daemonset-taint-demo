@@ -50,11 +50,11 @@ spec:
         image: registry:5000/kubectl:1.25.11
         resources:
           limits:
-            cpu: 2m
-            memory: 2Mi
+            cpu: 10m
+            memory: 10Mi
           requests:
-            cpu: 2m
-            memory: 2Mi
+            cpu: 10m
+            memory: 10Mi
         env:
           - name: K8S_NODE_NAME
             valueFrom:
