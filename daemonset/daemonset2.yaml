@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: demo-ds
+  name: demo-ds2
   namespace: default
   labels:
-    app: demo-ds
-    component: test
+    app: demo-ds2
+    component: test2
   annotations:
-    app: demo-ds
-    app-anno: demo-ds
+    app: demo-ds2
 spec:
   selector:
     matchLabels:
-      name: demo-ds
+      name: demo-ds2
   template:
     metadata:
       labels:
-        name: demo-ds
-        component: test
+        name: demo-ds2
+        component: test2
       annotations:
-        app-anno: demo-ds
+        app: demo-ds2
+        component: test2
     spec:
       terminationGracePeriodSeconds: 0
       tolerations:
