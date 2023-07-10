@@ -45,10 +45,15 @@ spec:
             - name: tmp-var
               mountPath: /app/var
             env:
+              - name: NAMESPACE
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
               - name: MANAGED_TAINT
                 value: "kiam.uswitch/agent-not-ready:NoExecute"
               - name: DAEMONSET_LABELS
-                value: "app.kubernetes.io/name=kiam,component=agent"
+                value: "name=demo-ds,component=test"
+                # value: "app.kubernetes.io/name=kiam,component=agent"
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -60,29 +65,11 @@ spec:
               - "-c"
               - "-x"
               - |
-                PODS_CUSTOME_OUTPUT=-o=custom-columns=NodeIP:'{.status.hostIP}',PodStatus:'{status.conditions[?(@.type=="Ready")].status}'
-                NODES_CUSTOM_OUTPUT=-o=custom-columns=Node:'{metadata.name}',IP:'{status.addresses[?(@.type=="InternalIP")].address}'
+                PODS_CUSTOME_OUTPUT=-o=custom-columns=NodeName:'{.spec.nodeName}',PodStatus:'{status.conditions[?(@.type=="Ready")].status}'
 
-                kubectl get pods -l ${DAEMONSET_LABELS} ${PODS_CUSTOME_OUTPUT} > /app/var/POD_ENTRIES
-                echo --POD_ENTRIES--
-                cat /app/var/POD_ENTRIES
-                echo ---
+                kubectl get pods -n ${NAMESPACE} -l ${DAEMONSET_LABELS} ${PODS_CUSTOME_OUTPUT} | grep 'True' | cut -d' ' -f1 > /app/var/NODE_NAMES
 
-                cat /app/var/POD_ENTRIES | grep 'True' | cut -d' ' -f1 > /app/var/NODE_IPS
-                echo --NODE_IPS--
-                cat /app/var/NODE_IPS
-                echo ---
-
-                kubectl get nodes ${NODES_CUSTOM_OUTPUT} > /app/var/NODE_LISTS
-                echo --NODE_LISTS--
-                cat /app/var/NODE_LISTS
-                echo ---
-
-                for IP in $(cat /app/var/NODE_IPS); do
-                  NODE_NAME=$(cat /app/var/NODE_LISTS | grep ${IP} | cut -d' ' -f1)
-                  echo --NODE_NAME--
-                  echo ${NODE_NAME}
-                  echo ---
+                for NODE_NAME in $(cat /app/var/NODE_NAMES); do
                   kubectl taint nodes ${NODE_NAME} ${MANAGED_TAINT}-
                 done
 
