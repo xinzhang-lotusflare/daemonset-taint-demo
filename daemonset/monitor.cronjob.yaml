@@ -46,9 +46,15 @@ spec:
               mountPath: /app/var
             env:
               - name: MANAGED_TAINT
-                value: demo-ds-not-ready:NoSchedule
+                value: "kiam.uswitch/agent-not-ready:NoExecute"
               - name: DAEMONSET_LABELS
-                value: "name=demo-ds,component=test"
+                value: "app.kubernetes.io/name=kiam,component=agent"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
             command:
               - "/bin/bash"
               - "-c"
