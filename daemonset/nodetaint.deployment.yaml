@@ -19,12 +19,10 @@ spec:
       serviceAccountName: nodetaint
       terminationGracePeriodSeconds: 0
       tolerations:
-      - key: demo-ds-not-ready
-        operator: Exists
-        effect: NoSchedule
-      - key: demo-ds-not-ready
-        operator: Exists
-        effect: NoExecute
+      - key: "agent.kiam.uswitch/not-ready"
+        operator: "Equal"
+        value: "1"
+        effect: "NoExecute"
       nodeSelector:
         kubernetes.io/hostname: k3d-test-agent-0
       containers:
@@ -42,7 +40,7 @@ spec:
         - /root/nodetaint
         args:
         - --log-level=debug
-        - --node-taint=demo-ds-not-ready
-        - --daemonset-annotation=app-anno=demo-ds
+        - --node-taint="kiam.uswitch/agent-not-ready=1:NoExecute"
+        - --daemonset-annotation=kiam.uswitch/component=agent
         ports:
         - containerPort: 9797

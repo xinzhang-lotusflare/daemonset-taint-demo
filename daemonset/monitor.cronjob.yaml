@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: monitor
+  namespace: default
+  labels:
+    app: monitor
+  annotations:
+    app: monitor
+spec:
+  schedule: "*/1 * * * * "
+  jobTemplate:
+    metadata:
+      labels:
+        name: monitor
+    spec:
+      template:
+        spec:
+          serviceAccountName: monitor-sa
+          restartPolicy: OnFailure
+          tolerations:
+          - key: agent.kiam.uswitch/not-ready
+            operator: Exists
+            effect: NoExecute
+          nodeSelector:
+            kubernetes.io/hostname: k3d-test-agent-0
+          volumes:
+          - name: tmp-var
+            emptyDir: {}
+          containers:
+          - name: monitor
+            # It monitors the state of daemonset `demo-ds`, which runs the python script actually.
+            # When the pod status is ready, it will remove specified taint from the same node.
+            #
+            # image: bitnami/kubectl:1.25.11-debian-11-r5
+            image: registry:5000/kubectl:1.25.11
+            resources:
+              limits:
+                cpu: 10m
+                memory: 10Mi
+              requests:
+                cpu: 2m
+                memory: 2Mi
+            volumeMounts:
+            - name: tmp-var
+              mountPath: /app/var
+            env:
+              - name: MANAGED_TAINT
+                value: demo-ds-not-ready:NoSchedule
+              - name: DAEMONSET_LABELS
+                value: "name=demo-ds,component=test"
+            command:
+              - "/bin/bash"
+              - "-c"
+              - "-x"
+              - |
+                PODS_CUSTOME_OUTPUT=-o=custom-columns=NodeIP:'{.status.hostIP}',PodStatus:'{status.conditions[?(@.type=="Ready")].status}'
+                NODES_CUSTOM_OUTPUT=-o=custom-columns=Node:'{metadata.name}',IP:'{status.addresses[?(@.type=="InternalIP")].address}'
+
+                kubectl get pods -l ${DAEMONSET_LABELS} ${PODS_CUSTOME_OUTPUT} > /app/var/POD_ENTRIES
+                echo --POD_ENTRIES--
+                cat /app/var/POD_ENTRIES
+                echo ---
+
+                cat /app/var/POD_ENTRIES | grep 'True' | cut -d' ' -f1 > /app/var/NODE_IPS
+                echo --NODE_IPS--
+                cat /app/var/NODE_IPS
+                echo ---
+
+                kubectl get nodes ${NODES_CUSTOM_OUTPUT} > /app/var/NODE_LISTS
+                echo --NODE_LISTS--
+                cat /app/var/NODE_LISTS
+                echo ---
+
+                for IP in $(cat /app/var/NODE_IPS); do
+                  NODE_NAME=$(cat /app/var/NODE_LISTS | grep ${IP} | cut -d' ' -f1)
+                  echo --NODE_NAME--
+                  echo ${NODE_NAME}
+                  echo ---
+                  kubectl taint nodes ${NODE_NAME} ${MANAGED_TAINT}-
+                done
+
+                exit 0

@@ -19,16 +19,13 @@ spec:
         name: demo-ds
         component: test
       annotations:
-        app-anno: demo-ds
+        kiam.uswitch/component: agent
     spec:
       terminationGracePeriodSeconds: 0
       tolerations:
-      - key: demo-ds-not-ready
-        operator: Exists
-        effect: NoSchedule
-      - key: demo-ds-not-ready
-        operator: Exists
-        effect: NoExecute
+      - key: "agent.kiam.uswitch/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
       nodeSelector:
         kubernetes.io/hostname: k3d-test-agent-0
       containers:
