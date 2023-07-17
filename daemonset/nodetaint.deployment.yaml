@@ -19,16 +19,17 @@ spec:
       serviceAccountName: nodetaint
       terminationGracePeriodSeconds: 0
       tolerations:
-      - key: "agent.kiam.uswitch/not-ready"
-        operator: "Equal"
-        value: "1"
-        effect: "NoExecute"
+      - key: "kiam.uswitch/agent-not-ready"
+        operator: "Exists"
+        effect: "NoSchedule"
       nodeSelector:
         kubernetes.io/hostname: k3d-test-agent-0
+      volumes:
+      - name: app-var
+        emptyDir: {}
       containers:
       - name: nodetaint
-        # image: quay.io/wish/nodetaint:v0.0.4
-        image: registry:5000/nodetaint:v0.0.4
+        image: registry:5000/kubectl:1.25.11
         resources:
           limits:
             memory: "128Mi"
@@ -36,11 +37,40 @@ spec:
           requests:
             memory: "128Mi"
             cpu: "100m"
+        volumeMounts:
+        - name: app-var
+          mountPath: /app/var
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MANAGED_TAINT_KEY
+          value: "kiam.uswitch/agent-not-ready"
+        - name: MANAGED_TAINT_EFFECT
+          value: "NoSchedule"
+        - name: DAEMONSET_LABELS
+          value: "name=demo-ds,component=test"
+        - name: REFERSH_INTERVAL
+          value: "1m"
         command:
-        - /root/nodetaint
-        args:
-        - --log-level=debug
-        - --node-taint="kiam.uswitch/agent-not-ready=1:NoExecute"
-        - --daemonset-annotation=kiam.uswitch/component=agent
-        ports:
-        - containerPort: 9797
+        - "/bin/bash"
+        - "-c"
+        - "-x"
+        - |
+          PODS_CUSTOME_OUTPUT=-o=custom-columns=Node:'{.spec.nodeName}',PodStatus:'{status.conditions[?(@.type=="Ready")].status}'
+          NODES_CUSTOME_OUTPUT=-o=custom-columns=Node:'{metadata.name}',Taints:'{spec.taints}'
+
+          while :
+          do
+            DS_NODE_NAMES=$(kubectl get pods -n ${NAMESPACE} -l ${DAEMONSET_LABELS} ${PODS_CUSTOME_OUTPUT} | grep 'True' | cut -d' ' -f1)
+
+            kubectl get node ${NODES_CUSTOME_OUTPUT} ${DS_NODE_NAMES} | grep "effect:${MANAGED_TAINT_EFFECT} key:${MANAGED_TAINT_KEY}" | cut -d' ' -f1 > /app/var/NODE_NAMES
+
+            if [[ ! $(cat /app/var/NODE_NAMES | wc -l) == 0 ]]; then
+              kubectl taint nodes $(cat /app/var/NODE_NAMES) ${MANAGED_TAINT_KEY}:${MANAGED_TAINT_EFFECT}-
+            fi
+
+            sleep ${REFERSH_INTERVAL}
+          done
+
