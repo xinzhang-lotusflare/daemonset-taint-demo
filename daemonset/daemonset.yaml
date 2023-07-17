@@ -23,9 +23,12 @@ spec:
     spec:
       terminationGracePeriodSeconds: 0
       tolerations:
-      - key: "agent.kiam.uswitch/not-ready"
+      - key: "nidhogg.uswitch.com/default"
         operator: "Exists"
-        effect: "NoExecute"
+        effect: "NoSchedule"
+      - key: "nidhogg.uswitch.com/default.demo-ds"
+        operator: "Exists"
+        effect: "NoSchedule"
       nodeSelector:
         kubernetes.io/hostname: k3d-test-agent-0
       containers:

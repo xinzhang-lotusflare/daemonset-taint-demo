@@ -13,3 +13,6 @@ rules:
 - apiGroups: ["apps"]
   resources: ["daemonsets"]
   verbs: ["get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "get", "watch", "list", "update"]
